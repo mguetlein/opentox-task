@@ -4,17 +4,16 @@ require 'opentox-ruby-api-wrapper'
 require 'dm-core'
 require 'dm-serializer'
 require 'dm-timestamps'
-
-set :lock, true
+require 'dm-types'
 
 DataMapper::setup(:default, "sqlite3://#{Dir.pwd}/task.sqlite3")
 
 class Task
 	include DataMapper::Resource
 	property :id, Serial
-	property :uri, String
-	property :resource, String
-	property :status, Text
+	property :uri, String, :length => 100
+	property :resource, String, :length => 100
+	property :status, String, :default => "created"
 	property :created_at, DateTime
 	property :finished_at, DateTime
 end
@@ -37,27 +36,31 @@ get '/:id/:property/?' do
 end
 
 post '/?' do
-	task = Task.new :resource => params[:resource_uri], :status => "started"
-	task.save
+	task = Task.new
+	task.save # needed to create id
 	task.uri = url_for("/#{task.id}", :full)
 	task.save
 	task.uri
 end
 
-put '/:id/completed' do
+put '/:id/:status/?' do
 	task = Task.get(params[:id])
-	task.status = "completed"
-	task.finished_at = DateTime.now
-	task.save
-end
-
-put '/:id/cancel' do
-	task = Task.get(params[:id])
-	task.status = "cancelled"
+	task.status = params[:status]
+	if params[:status] == "completed"
+		task.resource = params[:resource]
+		task.finished_at = DateTime.now
+	end
 	task.save
 end
 
 delete '/:id/?' do
-	Task.destroy!(params[:id])
+	Task.get(params[:id]).destroy!
+	"Task #{params[:id]} deleted."
 end
 
+delete '/?' do
+	Task.all.each do |task|
+		task.destroy!
+	end
+	"All tasks deleted."
+end
