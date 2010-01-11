@@ -10,10 +10,12 @@ $stdout.reopen(log)
 $stderr.reopen(log)
  
 if ENV['RACK_ENV'] == 'production'
-	use Rack::MailExceptions do |mail|
-		mail.to 'helma@in-silico.ch'
-		mail.subject '[ERROR] %s'
-	end 
+  use Rack::Reloader 
+  use Rack::ShowExceptions
+#	use Rack::MailExceptions do |mail|
+#		mail.to 'helma@in-silico.ch'
+#		mail.subject '[ERROR] %s'
+#	end 
 elsif ENV['RACK_ENV'] == 'development'
   use Rack::Reloader 
   use Rack::ShowExceptions
