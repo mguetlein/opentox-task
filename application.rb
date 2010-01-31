@@ -11,6 +11,7 @@ DataMapper::setup(:default, "sqlite3://#{Dir.pwd}/task.sqlite3")
 class Task
 	include DataMapper::Resource
 	property :id, Serial
+	property :pid, Integer
 	property :uri, String, :length => 100
 	property :resource, String, :length => 100
 	property :status, String, :default => "created"
@@ -45,21 +46,39 @@ end
 
 put '/:id/:status/?' do
 	task = Task.get(params[:id])
-	task.status = params[:status]
-	if params[:status] == "completed"
+	task.status = params[:status] unless params[:status] == "pid"
+	case params[:status]
+	when "completed"
 		task.resource = params[:resource]
 		task.finished_at = DateTime.now
+		task.pid = nil
+	when "pid"
+		task.pid = params[:pid]
+	when "cancelled"
+		Process.kill(9,task.pid) unless task.pid.nil?
+		task.pid = nil
 	end
 	task.save
 end
 
 delete '/:id/?' do
-	Task.get(params[:id]).destroy!
+	task = Task.get(params[:id])
+	begin
+		Process.kill(9,task.pid) unless task.pid.nil?
+	rescue
+		"Cannot kill task with pid #{task.pid}"
+	end
+	task.destroy!
 	"Task #{params[:id]} deleted."
 end
 
 delete '/?' do
 	Task.all.each do |task|
+		begin
+			Process.kill(9,task.pid) unless task.pid.nil?
+		rescue
+			"Cannot kill task with pid #{task.pid}"
+		end
 		task.destroy!
 	end
 	"All tasks deleted."
