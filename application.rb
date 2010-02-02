@@ -1,12 +1,6 @@
 require 'rubygems'
-gem 'opentox-ruby-api-wrapper', '= 1.2.6'
+gem 'opentox-ruby-api-wrapper', '= 1.2.7'
 require 'opentox-ruby-api-wrapper'
-require 'dm-core'
-require 'dm-serializer'
-require 'dm-timestamps'
-require 'dm-types'
-
-DataMapper::setup(:default, "sqlite3://#{Dir.pwd}/task.sqlite3")
 
 class Task
 	include DataMapper::Resource
@@ -37,6 +31,7 @@ get '/:id/:property/?' do
 end
 
 post '/?' do
+	LOGGER.debug "Creating new task ..."
 	task = Task.new
 	task.save # needed to create id
 	task.uri = url_for("/#{task.id}", :full)
