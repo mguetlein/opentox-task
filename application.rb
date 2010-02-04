@@ -1,16 +1,20 @@
 require 'rubygems'
 gem 'opentox-ruby-api-wrapper', '= 1.2.7'
 require 'opentox-ruby-api-wrapper'
+require "dm-is-tree"
 
 class Task
 	include DataMapper::Resource
 	property :id, Serial
+	property :parent_id, Integer
 	property :pid, Integer
 	property :uri, String, :length => 100
 	property :resource, String, :length => 100
 	property :status, String, :default => "created"
 	property :created_at, DateTime
 	property :finished_at, DateTime
+
+	is :tree, :order => :created_at
 end
 
 DataMapper.auto_upgrade!
@@ -41,7 +45,7 @@ end
 
 put '/:id/:status/?' do
 	task = Task.get(params[:id])
-	task.status = params[:status] unless params[:status] == "pid"
+	task.status = params[:status] unless /pid|parent/ =~ params[:status]
 	case params[:status]
 	when "completed"
 		task.resource = params[:resource]
@@ -49,9 +53,12 @@ put '/:id/:status/?' do
 		task.pid = nil
 	when "pid"
 		task.pid = params[:pid]
-	when "cancelled"
+	when "parent"
+		task.parent = Task.first(:uri => params[:uri])
+	when /cancelled|failed/
 		Process.kill(9,task.pid) unless task.pid.nil?
 		task.pid = nil
+		RestClient.put url_for("/#{self.parent.id}/#{params[:status]}"), {} unless self.parent.nil? # recursevly kill parent tasks
 	end
 	task.save
 end
