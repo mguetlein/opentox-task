@@ -8,8 +8,8 @@ class Task
 	property :id, Serial
 	property :parent_id, Integer
 	property :pid, Integer
-	property :uri, String, :length => 100
-	property :resource, String, :length => 100
+	property :uri, String, :length => 255
+	property :resource, String, :length => 255
 	property :status, String, :default => "created"
 	property :created_at, DateTime
 	property :finished_at, DateTime
