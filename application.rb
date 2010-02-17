@@ -58,7 +58,7 @@ put '/:id/:status/?' do
 	when /cancelled|failed/
 		Process.kill(9,task.pid) unless task.pid.nil?
 		task.pid = nil
-		RestClient.put url_for("/#{self.parent.id}/#{params[:status]}"), {} unless self.parent.nil? # recursevly kill parent tasks
+		RestClient.put url_for("/#{task.parent.id}/#{params[:status]}"), {} unless task.parent.nil? # recursevly kill parent tasks
 	end
 	task.save
 end
