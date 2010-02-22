@@ -39,7 +39,8 @@ post '/?' do
 	task = Task.new
 	task.save # needed to create id
 	task.uri = url_for("/#{task.id}", :full)
-	task.save
+	raise "could not save" unless task.save
+  LOGGER.debug "task created"
 	task.uri
 end
 
