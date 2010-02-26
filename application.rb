@@ -8,8 +8,8 @@ class Task
 	property :id, Serial
 	property :parent_id, Integer
 	property :pid, Integer
-	property :uri, String, :length => 100
-	property :resource, String, :length => 100
+	property :uri, String, :length => 255
+	property :resource, String, :length => 255
 	property :status, String, :default => "created"
 	property :created_at, DateTime
 	property :finished_at, DateTime
@@ -20,16 +20,19 @@ end
 DataMapper.auto_upgrade!
 
 get '/?' do
+	response['Content-Type'] = 'text/uri-list'
 	Task.all.collect{|t| t.uri}.join("\n")
 end
 
 get '/:id/?' do
+	response['Content-Type'] = 'application/x-yaml'
 	task = Task.get(params[:id])
 	task.to_yaml
 end
 
 # dynamic access to Task properties
 get '/:id/:property/?' do
+	response['Content-Type'] = 'text/plain'
 	task = Task.get(params[:id])
 	eval("task.#{params[:property]}").to_s
 end
@@ -40,7 +43,7 @@ post '/?' do
 	task.save # needed to create id
 	task.uri = url_for("/#{task.id}", :full)
 	raise "could not save" unless task.save
-  LOGGER.debug "task created"
+	response['Content-Type'] = 'text/uri-list'
 	task.uri
 end
 
@@ -72,6 +75,7 @@ delete '/:id/?' do
 		"Cannot kill task with pid #{task.pid}"
 	end
 	task.destroy!
+	response['Content-Type'] = 'text/plain'
 	"Task #{params[:id]} deleted."
 end
 
@@ -82,7 +86,9 @@ delete '/?' do
 		rescue
 			"Cannot kill task with pid #{task.pid}"
 		end
-		task.destroy!
+		#task.destroy!
 	end
+  Task.auto_migrate!
+	response['Content-Type'] = 'text/plain'
 	"All tasks deleted."
 end
