@@ -23,7 +23,7 @@ DataMapper.auto_upgrade!
 
 get '/?' do
 	response['Content-Type'] = 'text/uri-list'
-	Task.all.collect{|t| t.uri}.join("\n")
+	Task.all.collect{|t| t.uri}.join("\n") + "\n"
 end
 
 get '/:id/?' do
@@ -46,7 +46,7 @@ post '/?' do
 	task.uri = url_for("/#{task.id}", :full)
 	task.save
 	response['Content-Type'] = 'text/uri-list'
-	task.uri
+	task.uri + "\n"
 end
 
 put '/:id/:status/?' do
