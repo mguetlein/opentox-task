@@ -54,11 +54,13 @@ put '/:id/:status/?' do
 	task.status = params[:status] unless /pid|parent/ =~ params[:status]
 	case params[:status]
 	when "completed"
+
+		LOGGER.debug "Task " + params[:id].to_s + " completed"
 		task.resource = params[:resource]
 		task.finished_at = DateTime.now
 		task.pid = nil
 	when "pid"
-		LOGGER.debug "PID = " + params[:pid].to_s
+		#LOGGER.debug "PID = " + params[:pid].to_s
 		task.pid = params[:pid]
 	when "parent"
 		task.parent = Task.first(:uri => params[:uri])
@@ -67,12 +69,7 @@ put '/:id/:status/?' do
 		task.pid = nil
 		RestClient.put url_for("/#{self.parent.id}/#{params[:status]}"), {} unless self.parent.nil? # recursevly kill parent tasks
 	end
-	begin
 	task.save
-	rescue
-		sleep 0.1
-		task.save
-	end
 end
 
 delete '/:id/?' do
