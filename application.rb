@@ -1,7 +1,9 @@
 require 'rubygems'
-gem 'opentox-ruby-api-wrapper', '= 1.2.7'
+gem 'opentox-ruby-api-wrapper', '= 1.4.0'
 require 'opentox-ruby-api-wrapper'
 require "dm-is-tree"
+
+LOGGER.progname = File.expand_path(__FILE__)
 
 class Task
 	include DataMapper::Resource
@@ -21,7 +23,7 @@ DataMapper.auto_upgrade!
 
 get '/?' do
 	response['Content-Type'] = 'text/uri-list'
-	Task.all.collect{|t| t.uri}.join("\n")
+	Task.all.collect{|t| t.uri}.join("\n") + "\n"
 end
 
 get '/:id/?' do
@@ -44,7 +46,7 @@ post '/?' do
 	task.uri = url_for("/#{task.id}", :full)
 	raise "could not save" unless task.save
 	response['Content-Type'] = 'text/uri-list'
-	task.uri
+	task.uri + "\n"
 end
 
 put '/:id/:status/?' do
@@ -52,10 +54,13 @@ put '/:id/:status/?' do
 	task.status = params[:status] unless /pid|parent/ =~ params[:status]
 	case params[:status]
 	when "completed"
+
+		LOGGER.debug "Task " + params[:id].to_s + " completed"
 		task.resource = params[:resource]
 		task.finished_at = DateTime.now
 		task.pid = nil
 	when "pid"
+		#LOGGER.debug "PID = " + params[:pid].to_s
 		task.pid = params[:pid]
 	when "parent"
 		task.parent = Task.first(:uri => params[:uri])
