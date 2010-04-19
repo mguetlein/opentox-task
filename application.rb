@@ -15,6 +15,7 @@ class Task
 	property :status, String, :default => "created"
 	property :created_at, DateTime
 	property :finished_at, DateTime
+  property :description, Text
 
 	is :tree, :order => :created_at
 end
@@ -52,6 +53,7 @@ end
 put '/:id/:status/?' do
 	task = Task.get(params[:id])
 	task.status = params[:status] unless /pid|parent/ =~ params[:status]
+  task.description = params[:description] if params[:description]
 	case params[:status]
 	when "completed"
 
