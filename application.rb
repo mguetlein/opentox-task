@@ -3,7 +3,7 @@ gem 'opentox-ruby-api-wrapper', '= 1.4.0'
 require 'opentox-ruby-api-wrapper'
 require "dm-is-tree"
 
-LOGGER.progname = File.expand_path(__FILE__)
+LOGGER.progname = File.expand_path(__FILE__) 
 
 class Task
 	include DataMapper::Resource
