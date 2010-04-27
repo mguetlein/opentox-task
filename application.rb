@@ -8,11 +8,12 @@ LOGGER.progname = File.expand_path(__FILE__)
 class Task
 	include DataMapper::Resource
 	property :id, Serial
-	property :parent_id, Integer
-	property :pid, Integer
 	property :uri, String, :length => 255
   property :created_at, DateTime
+  
   property :finished_at, DateTime
+  property :due_to_time, DateTime
+  property :pid, Integer
   
   property :resultURI, String, :length => 255
   property :percentageCompleted, Float, :default => 0
@@ -20,8 +21,6 @@ class Task
   property :title, String, :length => 255
   property :creator, String, :length => 255
   property :description, Text
-
-	is :tree, :order => :created_at
 end
 
 DataMapper.auto_upgrade!
@@ -33,25 +32,23 @@ end
 
 get '/:id/?' do
   task = Task.get(params[:id])
+  task_content = {:creator => task.creator, :title => task.title, :date => task.created_at.to_s, :hasStatus => task.hasStatus,
+   :resultURI => task.resultURI, :percentageCompleted => task.percentageCompleted, :description => task.description,
+   :due_to_time => task.due_to_time.to_s}
+  
   halt 404, "Task #{params[:id]} not found." unless task
   
   case request.env['HTTP_ACCEPT']
-  #when /text\/x-yaml|\*\/\*/ # matches 'text/x-yaml', '*/*'
-  #  response['Content-Type'] = 'text/x-yaml'
-	#  task.to_yaml
+  when /text\/x-yaml|\*\/\*/ # matches 'text/x-yaml', '*/*'
+    response['Content-Type'] = 'text/x-yaml'
+    task_content[:uri] = task.uri
+	  task_content.to_yaml
   when /application\/rdf\+xml|\*\/\*/
     response['Content-Type'] = 'application/rdf+xml'
     owl = OpenTox::Owl.create 'Task', task.uri
-    owl.set("creator",task.creator)
-    owl.set("title",task.title)
-    owl.set("date",task.created_at.to_s)
-    owl.set("hasStatus",task.hasStatus)
-    owl.set("resultURI",task.resultURI)
-    owl.set("percentageCompleted",task.percentageCompleted)
-    owl.set("description",task.description)
+    task_content.each{ |k,v| owl.set(k.to_s,v)}
     owl.rdf
   else
-    #TODO implement to_owl 
     halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"text/x-yaml\"."
   end
 end
@@ -68,6 +65,7 @@ post '/?' do
 	task = Task.new
 	task.save # needed to create id
 	task.uri = url_for("/#{task.id}", :full)
+  task.due_to_time = DateTime.parse((Time.parse(task.created_at.to_s) + params[:max_duration].to_f).to_s) if params[:max_duration]
 	raise "could not save" unless task.save
 	response['Content-Type'] = 'text/uri-list'
 	task.uri + "\n"
@@ -77,25 +75,21 @@ put '/:id/:hasStatus/?' do
   
 	task = Task.get(params[:id])
   halt 404,"Task #{params[:id]} not found." unless task
-	task.hasStatus = params[:hasStatus] unless /pid|parent/ =~ params[:hasStatus]
+	task.hasStatus = params[:hasStatus] unless /pid/ =~ params[:hasStatus]
   task.description = params[:description] if params[:description]
   
 	case params[:hasStatus]
 	when "Completed"
 		LOGGER.debug "Task " + params[:id].to_s + " completed"
-    halt 402,"Param resultURI when completing task" unless params[:resultURI]
+    halt 402,"no param resultURI when completing task" unless params[:resultURI]
     task.resultURI = params[:resultURI]
 		task.finished_at = DateTime.now
-		task.pid = nil
-	when "pid"
-		#LOGGER.debug "PID = " + params[:pid].to_s
-		task.pid = params[:pid]
-	when "parent"
-		task.parent = Task.first(:uri => params[:uri])
+    task.pid = nil
+  when "pid"
+    task.pid = params[:pid]
 	when /Cancelled|Error/
 		Process.kill(9,task.pid) unless task.pid.nil?
 		task.pid = nil
-		RestClient.put url_for("/#{task.parent.id}/#{params[:hasStatus]}"),{} unless task.parent.nil? # recursevly kill parent tasks
   else
      halt 402,"Invalid value for hasStatus: '"+params[:hasStatus].to_s+"'"
   end
