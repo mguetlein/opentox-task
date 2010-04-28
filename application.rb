@@ -38,16 +38,18 @@ get '/:id/?' do
   
   halt 404, "Task #{params[:id]} not found." unless task
   
+  code = task.hasStatus == "Running" ? 202 : 200
+  
   case request.env['HTTP_ACCEPT']
   when /text\/x-yaml|\*\/\*/ # matches 'text/x-yaml', '*/*'
     response['Content-Type'] = 'text/x-yaml'
     task_content[:uri] = task.uri
-	  task_content.to_yaml
+    halt code, task_content.to_yaml
   when /application\/rdf\+xml|\*\/\*/
     response['Content-Type'] = 'application/rdf+xml'
     owl = OpenTox::Owl.create 'Task', task.uri
     task_content.each{ |k,v| owl.set(k.to_s,v)}
-    owl.rdf
+    halt code, owl.rdf
   else
     halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"text/x-yaml\"."
   end
