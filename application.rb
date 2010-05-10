@@ -32,11 +32,11 @@ end
 
 get '/:id/?' do
   task = Task.get(params[:id])
+  halt 404, "Task '#{params[:id]}' not found." unless task
+  
   task_content = {:creator => task.creator, :title => task.title, :date => task.created_at.to_s, :hasStatus => task.hasStatus,
    :resultURI => task.resultURI, :percentageCompleted => task.percentageCompleted, :description => task.description,
    :due_to_time => task.due_to_time.to_s}
-  
-  halt 404, "Task #{params[:id]} not found." unless task
   
   code = task.hasStatus == "Running" ? 202 : 200
   
