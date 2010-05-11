@@ -27,7 +27,7 @@ DataMapper.auto_upgrade!
 
 get '/?' do
 	response['Content-Type'] = 'text/uri-list'
-	Task.all.collect{|t| t.uri}.join("\n") + "\n"
+	Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
 end
 
 get '/:id/?' do
