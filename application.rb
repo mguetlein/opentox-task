@@ -58,7 +58,8 @@ end
 # dynamic access to Task properties
 get '/:id/:property/?' do
 	response['Content-Type'] = 'text/plain'
-	task = Task.get(params[:id])
+  task = Task.get(params[:id])
+  halt 404,"Task #{params[:id]} not found." unless task
 	eval("task.#{params[:property]}").to_s
 end
 
