@@ -1,5 +1,5 @@
 require 'rubygems'
-gem 'opentox-ruby-api-wrapper', '= 1.5.3'
+gem 'opentox-ruby-api-wrapper', '= 1.5.4'
 require 'opentox-ruby-api-wrapper'
 require "dm-is-tree"
 
