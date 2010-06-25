@@ -41,8 +41,8 @@ get '/:id/?' do
   code = task.hasStatus == "Running" ? 202 : 200
   
   case request.env['HTTP_ACCEPT']
-  when /text\/x-yaml|\*\/\*/ # matches 'text/x-yaml', '*/*'
-    response['Content-Type'] = 'text/x-yaml'
+  when /application\/x-yaml|\*\/\*/ # matches 'application/x-yaml', '*/*'
+    response['Content-Type'] = 'application/x-yaml'
     task_content[:uri] = task.uri
     halt code, task_content.to_yaml
   when /application\/rdf\+xml|\*\/\*/
@@ -51,7 +51,7 @@ get '/:id/?' do
     task_content.each{ |k,v| owl.set(k.to_s,v)}
     halt code, owl.rdf
   else
-    halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"text/x-yaml\"."
+    halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"application/x-yaml\"."
   end
 end
 
