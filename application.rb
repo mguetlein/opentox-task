@@ -34,9 +34,9 @@ get '/:id/?' do
   task = Task.get(params[:id])
   halt 404, "Task '#{params[:id]}' not found." unless task
   
-  task_content = {:creator => task.creator, :title => task.title, :date => task.created_at.to_s, :hasStatus => task.hasStatus,
+  task_content = {:creator => task.creator, :title => task.title, :date => task.created_at, :hasStatus => task.hasStatus,
    :resultURI => task.resultURI, :percentageCompleted => task.percentageCompleted, :description => task.description,
-   :due_to_time => task.due_to_time.to_s}
+   :due_to_time => task.due_to_time }
   
   code = task.hasStatus == "Running" ? 202 : 200
   
@@ -50,6 +50,9 @@ get '/:id/?' do
     owl = OpenTox::Owl.create 'Task', task.uri
     task_content.each{ |k,v| owl.set(k.to_s,v)}
     halt code, owl.rdf
+  when /text\/uri\-list/
+    response['Content-Type'] = 'text/uri-list'
+    halt code, task.resultURI
   else
     halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"application/x-yaml\"."
   end
