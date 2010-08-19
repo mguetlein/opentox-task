@@ -65,14 +65,15 @@ get '/:id/:property/?' do
 end
 
 post '/?' do
-	LOGGER.debug "Creating new task ..."
-	task = Task.new
-	task.save # needed to create id
-	task.uri = url_for("/#{task.id}", :full)
-  task.due_to_time = DateTime.parse((Time.parse(task.created_at.to_s) + params[:max_duration].to_f).to_s) if params[:max_duration]
-	raise "could not save" unless task.save
-	response['Content-Type'] = 'text/uri-list'
-	task.uri + "\n"
+  LOGGER.debug "Creating new task with params "+params.inspect
+  max_duration = params.delete(:max_duration.to_s) if params.has_key?(:max_duration.to_s)
+  task = Task.new(params)
+  task.save # needed to create id
+  task.uri = url_for("/#{task.id}", :full)
+  task.due_to_time = DateTime.parse((Time.parse(task.created_at.to_s) + max_duration.to_f).to_s) if max_duration
+  raise "could not save" unless task.save
+  response['Content-Type'] = 'text/uri-list'
+  task.uri + "\n"
 end
 
 put '/:id/:hasStatus/?' do
