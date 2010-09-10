@@ -11,6 +11,7 @@ class Task
   
   property :finished_at, DateTime
   property :due_to_time, DateTime
+  property :taskParameters, String, :length => 1024 
   property :pid, Integer
   
   property :resultURI, String, :length => 255
@@ -34,7 +35,7 @@ get '/:id/?' do
   
   task_content = {:creator => task.creator, :title => task.title, :date => task.created_at, :hasStatus => task.hasStatus,
    :resultURI => task.resultURI, :percentageCompleted => task.percentageCompleted, :description => task.description,
-   :due_to_time => task.due_to_time }
+   :due_to_time => task.due_to_time, :taskParameters => task.taskParameters }
   
   code = task.hasStatus == "Running" ? 202 : 200
   
