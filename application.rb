@@ -1,5 +1,5 @@
 require 'rubygems'
-gem "opentox-ruby-api-wrapper", "= 1.6.2"
+gem "opentox-ruby-api-wrapper", "= 1.6.2.1"
 require 'opentox-ruby-api-wrapper'
 #require "dm-is-tree"
 
@@ -25,8 +25,15 @@ end
 DataMapper.auto_upgrade!
 
 get '/?' do
-	response['Content-Type'] = 'text/uri-list'
-	Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
+  uri_list = Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
+  case request.env['HTTP_ACCEPT']
+  when /text\/html/
+    content_type "text/html"
+    OpenTox.text_to_html uri_list
+  else
+    content_type 'text/uri-list'
+    uri_list
+  end
 end
 
 get '/:id/?' do
@@ -40,17 +47,20 @@ get '/:id/?' do
   code = task.hasStatus == "Running" ? 202 : 200
   
   case request.env['HTTP_ACCEPT']
-  when /application\/x-yaml|\*\/\*/ # matches 'application/x-yaml', '*/*'
-    response['Content-Type'] = 'application/x-yaml'
+  when /text\/html/
+    content_type "text/html"
+    halt code, OpenTox.text_to_html(task_content.to_yaml)        
+  when /application\/x-yaml/ # matches 'application/x-yaml', '*/*'
+    content_type 'application/x-yaml'
     task_content[:uri] = task.uri
     halt code, task_content.to_yaml
   when /application\/rdf\+xml|\*\/\*/
-    response['Content-Type'] = 'application/rdf+xml'
+    content_type 'application/rdf+xml'
     owl = OpenTox::Owl.create 'Task', task.uri
     task_content.each{ |k,v| owl.set(k.to_s,v)}
     halt code, owl.rdf
   when /text\/uri\-list/
-    response['Content-Type'] = 'text/uri-list'
+    content_type 'text/uri-list'
     halt code, task.resultURI
   else
     halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"application/x-yaml\"."
