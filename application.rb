@@ -50,11 +50,11 @@ get '/:id/?' do
   when /text\/html/
     content_type "text/html"
     halt code, OpenTox.text_to_html(task_content.to_yaml)        
-  when /application\/x-yaml/ # matches 'application/x-yaml', '*/*'
+  when /application\/x-yaml|\*\/\*/ # matches 'application/x-yaml', '*/*'
     content_type 'application/x-yaml'
     task_content[:uri] = task.uri
     halt code, task_content.to_yaml
-  when /application\/rdf\+xml|\*\/\*/
+  when /application\/rdf\+xml/
     content_type 'application/rdf+xml'
     owl = OpenTox::Owl.create 'Task', task.uri
     task_content.each{ |k,v| owl.set(k.to_s,v)}
