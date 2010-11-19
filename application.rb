@@ -1,7 +1,6 @@
 require 'rubygems'
 gem "opentox-ruby-api-wrapper", "= 1.6.6"
 require 'opentox-ruby-api-wrapper'
-#require "dm-is-tree"
 
 class Task
 	include DataMapper::Resource
@@ -19,35 +18,47 @@ class Task
   property :title, String, :length => 255
   property :creator, String, :length => 255
   property :description, Text
+
+  def metadata
+    {
+      DC.creator => @creator,
+      DC.title => @title,
+      DC.date => @created_at,
+      OT.hasStatus => @hasStatus,
+      OT.resultURI => @resultURI,
+      OT.percentageCompleted => @percentageCompleted,
+      DC.description => @description,
+      #:due_to_time => @due_to_timer
+    }
+  end
 end
 
 DataMapper.auto_upgrade!
 
+# Get a list of all tasks
+# @return [text/uri-list] List of all tasks
 get '/?' do
 	response['Content-Type'] = 'text/uri-list'
 	Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
 end
 
+# Get task representation
+# @param [Header] Accept Mime type of accepted representation, may be one of `application/rdf+xml,application/x-yaml,text/uri-list`
+# @return [application/rdf+xml,application/x-yaml,text/uri-list] Task representation in requested format, Accept:text/uri-list returns URI of the created resource if task status is "Completed"
 get '/:id/?' do
   task = Task.get(params[:id])
   halt 404, "Task '#{params[:id]}' not found." unless task
-  
-  task_content = {:creator => task.creator, :title => task.title, :date => task.created_at, :hasStatus => task.hasStatus,
-   :resultURI => task.resultURI, :percentageCompleted => task.percentageCompleted, :description => task.description,
-   :due_to_time => task.due_to_time }
-  
   code = task.hasStatus == "Running" ? 202 : 200
   
   case request.env['HTTP_ACCEPT']
-  when /application\/x-yaml|\*\/\*/ # matches 'application/x-yaml', '*/*'
+  when /yaml/ 
     response['Content-Type'] = 'application/x-yaml'
-    task_content[:uri] = task.uri
-    halt code, task_content.to_yaml
-  when /application\/rdf\+xml|\*\/\*/
+    halt code, task.metadata.to_yaml
+  when /application\/rdf\+xml|\*\/\*/ # matches 'application/x-yaml', '*/*'
     response['Content-Type'] = 'application/rdf+xml'
-    owl = OpenTox::Owl.create 'Task', task.uri
-    task_content.each{ |k,v| owl.set(k.to_s,v)}
-    halt code, owl.rdf
+    t = OpenTox::Task.new task.uri
+    t.add_metadata task.metadata
+    halt code, t.to_rdfxml
   when /text\/uri\-list/
     response['Content-Type'] = 'text/uri-list'
     halt code, task.resultURI
@@ -56,26 +67,65 @@ get '/:id/?' do
   end
 end
 
-# dynamic access to Task properties
+# Get Task properties. Works for
+# - /task/id
+# - /task/uri
+# - /task/created_at
+# - /task/finished_at
+# - /task/due_to_time
+# - /task/pid
+# - /task/resultURI
+# - /task/percentageCompleted
+# - /task/hasStatus
+# - /task/title
+# - /task/creator
+# - /task/description
+# @return [String] Task property
 get '/:id/:property/?' do
 	response['Content-Type'] = 'text/plain'
   task = Task.get(params[:id])
   halt 404,"Task #{params[:id]} not found." unless task
-	eval("task.#{params[:property]}").to_s
+  begin
+    eval("task.#{params[:property]}").to_s
+  rescue
+    halt 404,"Unknown task property #{params[:property]}."
+  end
 end
 
+# Create a new task
+# @param [optional,String] max_duration
+# @param [optional,String] pid
+# @param [optional,String] resultURI
+# @param [optional,String] percentageCompleted
+# @param [optional,String] hasStatus
+# @param [optional,String] title
+# @param [optional,String] creator
+# @param [optional,String] description
+# @return [text/uri-list] URI for new task
 post '/?' do
   LOGGER.debug "Creating new task with params "+params.inspect
   max_duration = params.delete(:max_duration.to_s) if params.has_key?(:max_duration.to_s)
-  task = Task.new(params)
-  task.save # needed to create id
+  task = Task.create(params)
+  #task.save # needed to create id
+  #LOGGER.debug task.uri
   task.uri = url_for("/#{task.id}", :full)
   task.due_to_time = DateTime.parse((Time.parse(task.created_at.to_s) + max_duration.to_f).to_s) if max_duration
-  raise "could not save" unless task.save
+  raise "Could not save task #{task.uri}" unless task.save
   response['Content-Type'] = 'text/uri-list'
   task.uri + "\n"
 end
 
+# Change task status. Possible URIs are: `
+# - /task/Cancelled
+# - /task/Completed: requires taskURI argument
+# - /task/Running
+# - /task/Error
+# - /task/pid: requires pid argument
+# IMPORTANT NOTE: Rack does not accept empty PUT requests. Please send an empty parameter (e.g. with -d '' for curl) or you will receive a "411 Length Required" error.
+# @param [optional, String] resultURI URI of created resource, required for /task/Completed
+# @param [optional, String] pid Task PID, required for /task/pid
+# @param [optional, String] description Task description
+# @return [] nil
 put '/:id/:hasStatus/?' do
   
 	task = Task.get(params[:id])
@@ -103,6 +153,8 @@ put '/:id/:hasStatus/?' do
     
 end
 
+# Delete a task
+# @return [text/plain] Status message
 delete '/:id/?' do
 	task = Task.get(params[:id])
   halt 404, "Task #{params[:id]} not found." unless task
@@ -116,6 +168,8 @@ delete '/:id/?' do
 	"Task #{params[:id]} deleted."
 end
 
+# Delete all tasks
+# @return [text/plain] Status message
 delete '/?' do
 	Task.all.each do |task|
 		begin
