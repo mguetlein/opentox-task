@@ -106,8 +106,6 @@ post '/?' do
   LOGGER.debug "Creating new task with params "+params.inspect
   max_duration = params.delete(:max_duration.to_s) if params.has_key?(:max_duration.to_s)
   task = Task.create(params)
-  #task.save # needed to create id
-  #LOGGER.debug task.uri
   task.uri = url_for("/#{task.id}", :full)
   task.due_to_time = DateTime.parse((Time.parse(task.created_at.to_s) + max_duration.to_f).to_s) if max_duration
   raise "Could not save task #{task.uri}" unless task.save
