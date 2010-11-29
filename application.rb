@@ -89,6 +89,7 @@ end
 
 put '/:id/:hasStatus/?' do
   
+  LOGGER.warn "TASK id:" + params[:id].to_s + " hasStatus:"+params[:hasStatus].to_s+" params:"+params.inspect.to_s
 	task = Task.get(params[:id])
   halt 404,"Task #{params[:id]} not found." unless task
 	task.hasStatus = params[:hasStatus] unless /pid/ =~ params[:hasStatus]
@@ -100,7 +101,12 @@ put '/:id/:hasStatus/?' do
     halt 402,"no param resultURI when completing task" unless params[:resultURI]
     task.resultURI = params[:resultURI]
 		task.finished_at = DateTime.now
+    task.percentageCompleted = 100
     task.pid = nil
+  when "Running"
+    halt 400,"Task cannot be set to running after not running anymore" if task.hasStatus!="Running"
+    task.percentageCompleted = params[:percentageCompleted].to_f
+    LOGGER.debug "Task " + params[:id].to_s + " set percentage completed to: "+params[:percentageCompleted].to_s
   when "pid"
     task.pid = params[:pid]
 	when /Cancelled|Error/
