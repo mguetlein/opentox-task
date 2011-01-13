@@ -27,7 +27,8 @@ class Task
       OT.hasStatus => @hasStatus,
       OT.resultURI => @resultURI,
       OT.percentageCompleted => @percentageCompleted,
-      DC.description => @description,
+      #text fields are lazy loaded, using member variable can cause description to be nil
+      DC.description => description   
       #:due_to_time => @due_to_timer
     }
   end
@@ -148,7 +149,7 @@ put '/:id/:hasStatus/?' do
   end
 	
   halt 500,"could not save task" unless task.save
-    
+
 end
 
 # Delete a task
