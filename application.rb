@@ -39,8 +39,9 @@ DataMapper.auto_upgrade!
 # Get a list of all tasks
 # @return [text/uri-list] List of all tasks
 get '/?' do
-	response['Content-Type'] = 'text/uri-list'
-	Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
+	LOGGER.debug "list all tasks "+params.inspect
+  response['Content-Type'] = 'text/uri-list'
+  Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
 end
 
 # Get task representation
@@ -124,6 +125,7 @@ end
 # @param [optional, String] resultURI URI of created resource, required for /task/Completed
 # @param [optional, String] pid Task PID, required for /task/pid
 # @param [optional, String] description Task description
+# @param [optional, String] percentageCompleted progress value, can only be set while running
 # @return [] nil
 put '/:id/:hasStatus/?' do
   
@@ -138,9 +140,14 @@ put '/:id/:hasStatus/?' do
     halt 402,"no param resultURI when completing task" unless params[:resultURI]
     task.resultURI = params[:resultURI]
 		task.finished_at = DateTime.now
+    task.percentageCompleted = 100
     task.pid = nil
   when "pid"
     task.pid = params[:pid]
+  when "Running"
+    halt 400,"Task cannot be set to running after not running anymore" if task.hasStatus!="Running"
+    task.percentageCompleted = params[:percentageCompleted].to_f
+    LOGGER.debug "Task " + params[:id].to_s + " set percentage completed to: "+params[:percentageCompleted].to_s
 	when /Cancelled|Error/
 		Process.kill(9,task.pid) unless task.pid.nil?
 		task.pid = nil
