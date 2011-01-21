@@ -40,8 +40,13 @@ DataMapper.auto_upgrade!
 # @return [text/uri-list] List of all tasks
 get '/?' do
 	LOGGER.debug "list all tasks "+params.inspect
-  response['Content-Type'] = 'text/uri-list'
-  Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
+  if request.env['HTTP_ACCEPT'] =~ /html/
+    response['Content-Type'] = 'text/html'
+    OpenTox.text_to_html Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
+  else
+    response['Content-Type'] = 'text/uri-list'
+    Task.all(params).collect{|t| t.uri}.join("\n") + "\n"
+  end
 end
 
 # Get task representation
@@ -56,6 +61,9 @@ get '/:id/?' do
   when /yaml/ 
     response['Content-Type'] = 'application/x-yaml'
     halt code, task.metadata.to_yaml
+  when /html/
+    response['Content-Type'] = 'text/html'
+    halt code, OpenTox.text_to_html(task.metadata.to_yaml)    
   when /application\/rdf\+xml|\*\/\*/ # matches 'application/x-yaml', '*/*'
     response['Content-Type'] = 'application/rdf+xml'
     t = OpenTox::Task.new task.uri
