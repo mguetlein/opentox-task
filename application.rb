@@ -18,6 +18,8 @@ class Task
   property :title, String, :length => 255
   property :creator, String, :length => 255
   property :description, Text
+  
+  property :errorReport, Object
 
   def metadata
     {
@@ -60,14 +62,19 @@ get '/:id/?' do
   case request.env['HTTP_ACCEPT']
   when /yaml/ 
     response['Content-Type'] = 'application/x-yaml'
-    halt code, task.metadata.to_yaml
+    metadata = task.metadata
+    metadata[OT.errorReport] = task.errorReport if task.errorReport
+    halt code, metadata.to_yaml
   when /html/
     response['Content-Type'] = 'text/html'
-    halt code, OpenTox.text_to_html(task.metadata.to_yaml)    
+    metadata = task.metadata
+    metadata[OT.errorReport] = task.errorReport if task.errorReport
+    halt code, OpenTox.text_to_html(metadata.to_yaml)    
   when /application\/rdf\+xml|\*\/\*/ # matches 'application/x-yaml', '*/*'
     response['Content-Type'] = 'application/rdf+xml'
     t = OpenTox::Task.new task.uri
     t.add_metadata task.metadata
+    t.add_error_report task.errorReport if task.errorReport
     halt code, t.to_rdfxml
   when /text\/uri\-list/
     response['Content-Type'] = 'text/uri-list'
@@ -137,10 +144,12 @@ end
 # @return [] nil
 put '/:id/:hasStatus/?' do
   
+  LOGGER.debug "put to task "+params.inspect
 	task = Task.get(params[:id])
   halt 404,"Task #{params[:id]} not found." unless task
 	task.hasStatus = params[:hasStatus] unless /pid/ =~ params[:hasStatus]
   task.description = params[:description] if params[:description]
+  task.errorReport = YAML.load(params[:errorReport]) if params[:errorReport]
   
 	case params[:hasStatus]
 	when "Completed"
