@@ -19,6 +19,8 @@ class Task
   property :creator, String, :length => 255
   property :description, Text
   
+  property :waiting_for, String, :length => 255
+  
   property :errorReport, Object
 
   def metadata
@@ -63,11 +65,13 @@ get '/:id/?' do
   when /yaml/ 
     response['Content-Type'] = 'application/x-yaml'
     metadata = task.metadata
+    metadata[OT.waitingFor] = task.waiting_for
     metadata[OT.errorReport] = task.errorReport if task.errorReport
     halt code, metadata.to_yaml
   when /html/
     response['Content-Type'] = 'text/html'
     metadata = task.metadata
+    metadata[OT.waitingFor] = task.waiting_for
     metadata[OT.errorReport] = task.errorReport if task.errorReport
     halt code, OpenTox.text_to_html(metadata.to_yaml)    
   when /application\/rdf\+xml|\*\/\*/ # matches 'application/x-yaml', '*/*'
@@ -145,7 +149,6 @@ end
 # @return [] nil
 put '/:id/:hasStatus/?' do
   
-  LOGGER.debug "put to task "+params.inspect
 	task = Task.get(params[:id])
   halt 404,"Task #{params[:id]} not found." unless task
 	task.hasStatus = params[:hasStatus] unless /pid/ =~ params[:hasStatus]
@@ -164,9 +167,14 @@ put '/:id/:hasStatus/?' do
     task.pid = params[:pid]
   when "Running"
     halt 400,"Task cannot be set to running after not running anymore" if task.hasStatus!="Running"
-    task.percentageCompleted = params[:percentageCompleted].to_f
-    LOGGER.debug "Task " + params[:id].to_s + " set percentage completed to: "+params[:percentageCompleted].to_s
+    task.waiting_for = params[:waiting_for] if params.has_key?("waiting_for")
+    if params.has_key?("percentageCompleted")
+      task.percentageCompleted = params[:percentageCompleted].to_f
+      #LOGGER.debug "Task " + params[:id].to_s + " set percentage completed to: "+params[:percentageCompleted].to_s
+    end
 	when /Cancelled|Error/
+    OpenTox::Task.find(task.waiting_for).cancel if task.waiting_for
+    LOGGER.debug("Aborting task "+task.uri.to_s)
 		Process.kill(9,task.pid) unless task.pid.nil?
 		task.pid = nil
   else
