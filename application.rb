@@ -173,7 +173,7 @@ put '/:id/:hasStatus/?' do
       #LOGGER.debug "Task " + params[:id].to_s + " set percentage completed to: "+params[:percentageCompleted].to_s
     end
 	when /Cancelled|Error/
-    OpenTox::Task.find(task.waiting_for).cancel if task.waiting_for
+    OpenTox::Task.find(task.waiting_for).cancel if task.waiting_for and task.waiting_for.uri?
     LOGGER.debug("Aborting task "+task.uri.to_s)
 		Process.kill(9,task.pid) unless task.pid.nil?
 		task.pid = nil
