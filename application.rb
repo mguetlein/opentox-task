@@ -83,7 +83,12 @@ get '/:id/?' do
     halt t.to_rdfxml
   when /text\/uri\-list/
     response['Content-Type'] = 'text/uri-list'
-    halt code, task.resultURI
+    # if the task is running return task-uri, as defined in the API
+    if code==202 
+      halt code, task.uri
+    else
+      halt code, task.resultURI
+    end
   else
     halt 400, "MIME type '"+request.env['HTTP_ACCEPT'].to_s+"' not supported, valid Accept-Headers are \"application/rdf+xml\" and \"application/x-yaml\"."
   end
