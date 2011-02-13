@@ -76,6 +76,7 @@ get '/:id/?' do
     halt code, OpenTox.text_to_html(metadata.to_yaml)    
   when /application\/rdf\+xml|\*\/\*/ # matches 'application/x-yaml', '*/*'
     response['Content-Type'] = 'application/rdf+xml'
+    LOGGER.debug "requesting task #{params[:id]} in rdf-xml "+task.metadata.inspect
     t = OpenTox::Task.new task.uri
     t.add_metadata task.metadata
     t.add_error_report task.errorReport
